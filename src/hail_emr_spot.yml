@@ -1,0 +1,348 @@
+# Copyright 2019-2020 Maxime HEBRARD @ https://github.com/c-BIG
+# EMR v6.1.0 - Hadoop v3.2.1 - Java v1.8.0 - Python3 v3.7.9 - Spark v3.0.0 - Scala v2.12.12 - Zeppelin v0.9.0 - Hail v0.2.59 - VEP v95
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Provision an EMR cluster on spot instances with Python3, Spark, Hail, ensembl-VEP and Zeppelin
+Metadata:
+  AWS::CloudFormation::Interface:
+    # Parameter list
+    ParameterGroups:
+    - Label:
+        default: EMR Options
+      Parameters:
+        - EMRClusterName
+        - EMRReleaseLabel
+        - EMRLogBucket
+        - Subnet
+        - SecurityGroup
+        - KeyName
+        - InstanceType
+        - SpotCPUCount
+        - DiskSizeGB
+        - BidPercentage        
+    - Label:
+        default: Stack Options
+      Parameters:
+        - GitHubAccount
+        - GitHubRepository
+        - GitHubToken
+        - CFNBucket
+        - HailVersion
+        - VEPInstall
+        - VEPBucket
+        - VEPVersion
+        - Assembly
+    - Label:
+        default: Tags
+      Parameters:
+        - NameTag
+        - OwnerTag
+        - ProjectTag
+Parameters:
+  # Parameter definition
+  EMRClusterName:
+    Description: Name of the EMR cluster
+    Type: String
+    Default: emr-cluster
+  EMRReleaseLabel:
+    Description: EMR release label which determines the versions of application software that are installed on the cluster.
+    Type: String
+    Default: emr-6.1.0
+    AllowedValues:
+      - emr-6.1.0
+  EMRLogBucket:
+    Description: S3 bucket address for EMR log storage
+    Type: String
+    Default: s3n://<bucket>/<folder>/
+  Subnet:
+    Description: VPC subnet in which to create the cluster.
+    Type: AWS::EC2::Subnet::Id
+  SecurityGroup:
+    Description: Seurity group to ensure access to the master node.
+    Type: AWS::EC2::SecurityGroup::Id
+  KeyName:
+    Description: name of the AWS key pair that will be used for SSH connections to the cluster.
+    Type: AWS::EC2::KeyPair::KeyName
+  InstanceType:
+    Description: EMR node ec2 instance type.
+    Type: String
+    Default: r5
+    AllowedValues:
+      - c5
+      - m5
+      - r5
+  SpotCPUCount:
+    Description: Number of CPU to provision on spot instances (in addition of 1 MASTER 4CPU onDemand)
+    Type: Number
+    MinValue: '4'
+    MaxValue: '600'
+    Default: '4'
+  DiskSizeGB:
+    Description: EBS Volume size (GB) for each node
+    Type: Number
+    MinValue: '50'
+    MaxValue: '1000'
+    Default: '100'
+  BidPercentage:
+    Description: Percentage of onDemand price requested for spot instances
+    Type: Number
+    MinValue: '1'
+    MaxValue: '100'
+    Default: '45'
+  GitHubAccount:
+    Description: GitHub username that push/pull the repository
+    Type: String
+    Default: username
+  GitHubRepository:
+    Description: GitHub repository
+    Type: String
+    Default: apache/zeppelin
+  GitHubToken:
+    Description: GitHub personnal access token with full repo access
+    Type: String
+  CFNBucket:
+    Description: S3 bucket address for CloudFormation bootstrap actions sources
+    Type: String
+    Default: s3://<bucket>/<folder>/
+  HailVersion:
+    Description: Version of Hail installed on the cluster.
+    Type: String
+    Default: '0.2.59'
+    AllowedValues:
+      - '0.2.59'
+  VEPInstall:
+    Description: Include VEP in the stack
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+  VEPBucket:
+    Description: S3 bucket address for VEP data sources
+    Type: String
+    Default: s3://<bucket>/<folder>/vep_data/
+  VEPVersion:
+    Description: Version of VEP installed on the cluster.
+    Type: String
+    Default: '95'
+    AllowedValues:
+      - '95'
+  Assembly:
+    Description: Reference genome version for VEP analysis.
+    Type: String
+    Default: 'GRCh38'
+    AllowedValues:
+      - 'GRCh38'
+  OwnerTag:
+    Type: String
+    Default: Owner
+    MinLength: 1
+    Description: Owner name - used to tag the cluster
+  ProjectTag:
+    Type: String
+    MinLength: 1
+    Default: Project
+    Description: Project - used to tag the cluster
+  NameTag:
+    Type: String
+    MinLength: 1
+    Default: emr-node
+    Description: Name of the EC2 instances
+Resources:
+  SparkCluster:
+    # Description: Main EMR cluster declaration.
+    Type: AWS::EMR::Cluster
+    Properties:
+      Name: 
+        Ref: EMRClusterName
+      Applications:
+      - Name: Ganglia
+      - Name: Hadoop
+      - Name: JupyterHub
+      - Name: Livy
+      - Name: Spark
+      - Name: Zeppelin
+      BootstrapActions:
+      - Name: install_hail
+        ScriptBootstrapAction:
+          Path: !Sub "${CFNBucket}install_hail.sh"
+          Args:
+          - --output-path
+          - Ref: CFNBucket
+          - --hail-version
+          - Ref: HailVersion
+      - Name: install_zeppelin
+        ScriptBootstrapAction:
+          Path: !Sub "${CFNBucket}install_zeppelin.sh"
+          Args:
+          - --account
+          - Ref: GitHubAccount
+          - --repo
+          - Ref: GitHubRepository
+          - --token
+          - Ref: GitHubToken
+      - Name: install_vep
+        ScriptBootstrapAction:
+          Path: !Sub "${CFNBucket}install_vep.sh"
+          Args:
+          - --install
+          - Ref: VEPInstall
+          - --output-path
+          - Ref: CFNBucket
+          - --vep-version
+          - Ref: VEPVersion
+          - --assembly
+          - Ref: Assembly
+      Configurations:
+      - Classification: emrfs-site
+        ConfigurationProperties:
+          fs.s3.maxConnections: 100
+      - Classification: livy-conf
+        ConfigurationProperties:
+          livy.server.session.timeout-check": false,
+      - Classification: spark
+        ConfigurationProperties:
+          maximizeResourceAllocation: true
+      - Classification: spark-defaults
+        ConfigurationProperties:
+          spark.jars: /usr/local/lib/python3.7/site-packages/hail/backend/hail-all-spark.jar
+          spark.driver.extraClassPath: /usr/local/lib/python3.7/site-packages/hail/backend/hail-all-spark.jar:/usr/lib/hadoop-lzo/lib/*:/usr/lib/hadoop/hadoop-aws.jar:/usr/share/aws/aws-java-sdk/*:/usr/share/aws/emr/emrfs/conf:/usr/share/aws/emr/emrfs/lib/*:/usr/share/aws/emr/emrfs/auxlib/*:/usr/share/aws/emr/goodies/lib/emr-spark-goodies.jar:/usr/share/aws/emr/security/conf:/usr/share/aws/emr/security/lib/*:/usr/share/aws/hmclient/lib/aws-glue-datacatalog-spark-client.jar:/usr/share/java/Hive-JSON-Serde/hive-openx-serde.jar:/usr/share/aws/sagemaker-spark-sdk/lib/sagemaker-spark-sdk.jar:/usr/share/aws/emr/s3select/lib/emr-s3-select-spark-connector.jar
+          spark.executor.extraClassPath: /usr/local/lib/python3.7/site-packages/hail/backend/hail-all-spark.jar:/usr/lib/hadoop-lzo/lib/*:/usr/lib/hadoop/hadoop-aws.jar:/usr/share/aws/aws-java-sdk/*:/usr/share/aws/emr/emrfs/conf:/usr/share/aws/emr/emrfs/lib/*:/usr/share/aws/emr/emrfs/auxlib/*:/usr/share/aws/emr/goodies/lib/emr-spark-goodies.jar:/usr/share/aws/emr/security/conf:/usr/share/aws/emr/security/lib/*:/usr/share/aws/hmclient/lib/aws-glue-datacatalog-spark-client.jar:/usr/share/java/Hive-JSON-Serde/hive-openx-serde.jar:/usr/share/aws/sagemaker-spark-sdk/lib/sagemaker-spark-sdk.jar:/usr/share/aws/emr/s3select/lib/emr-s3-select-spark-connector.jar
+          spark.serializer: org.apache.spark.serializer.KryoSerializer
+          spark.kryo.registrator: is.hail.kryo.HailKryoRegistrator
+      - Classification: zeppelin-env
+        Configurations:
+          - Classification: export
+            ConfigurationProperties:
+              ZEPPELIN_NOTEBOOK_DIR: /opt/zeppelin
+              ZEPPELIN_NOTEBOOK_STORAGE: org.apache.zeppelin.notebook.repo.GitHubNotebookRepo
+              ZEPPELIN_NOTEBOOK_GIT_REMOTE_URL: !Join ['', ['https://', !Ref GitHubAccount, ':', !Ref GitHubToken, '@github.com/', !Ref GitHubRepository, '.git']]
+              ZEPPELIN_NOTEBOOK_GIT_REMOTE_ACCESS_TOKEN: !Ref GitHubToken     
+      Instances:
+        AdditionalMasterSecurityGroups:
+        - Ref: SecurityGroup
+        Ec2KeyName:
+          Ref: KeyName
+        Ec2SubnetId:
+          Ref: Subnet
+        MasterInstanceFleet:
+          Name: Master
+          TargetOnDemandCapacity: 1
+          TargetSpotCapacity: 0
+          InstanceTypeConfigs:
+          - InstanceType: !Join ['', [!Ref InstanceType, '.xlarge']]
+            WeightedCapacity: 1
+            BidPriceAsPercentageOfOnDemandPrice:
+              Ref: BidPercentage
+            EbsConfiguration:
+              EbsOptimized: true
+              EbsBlockDeviceConfigs:
+              - VolumeSpecification:
+                  SizeInGB: 
+                    Ref: DiskSizeGB
+                  VolumeType: gp2
+        CoreInstanceFleet:
+          Name: Cores
+          TargetOnDemandCapacity: 1
+          TargetSpotCapacity:
+            Ref: SpotCPUCount 
+          InstanceTypeConfigs:
+          - InstanceType: !Join ['', [!Ref InstanceType, '.xlarge']]
+            WeightedCapacity: 4
+            BidPriceAsPercentageOfOnDemandPrice:
+              Ref: BidPercentage
+            EbsConfiguration:
+              EbsOptimized: true
+              EbsBlockDeviceConfigs:
+              - VolumeSpecification:
+                  SizeInGB: 
+                    Ref: DiskSizeGB
+                  VolumeType: gp2
+          - InstanceType: !Join ['', [!Ref InstanceType, '.2xlarge']]
+            WeightedCapacity: 8
+            BidPriceAsPercentageOfOnDemandPrice:
+              Ref: BidPercentage
+            EbsConfiguration:
+              EbsOptimized: true
+              EbsBlockDeviceConfigs:
+              - VolumeSpecification:
+                  SizeInGB: 
+                    Ref: DiskSizeGB
+                  VolumeType: gp2
+          - InstanceType: !Join ['', [!Ref InstanceType, '.4xlarge']]
+            WeightedCapacity: 16
+            BidPriceAsPercentageOfOnDemandPrice:
+              Ref: BidPercentage
+            EbsConfiguration:
+              EbsOptimized: true
+              EbsBlockDeviceConfigs:
+              - VolumeSpecification:
+                  SizeInGB: 
+                    Ref: DiskSizeGB
+                  VolumeType: gp2
+          - InstanceType: !Join ['', [!Ref InstanceType, '.12xlarge']]
+            WeightedCapacity: 48
+            BidPriceAsPercentageOfOnDemandPrice:
+              Ref: BidPercentage
+            EbsConfiguration:
+              EbsOptimized: true
+              EbsBlockDeviceConfigs:
+              - VolumeSpecification:
+                  SizeInGB: 
+                    Ref: DiskSizeGB
+                  VolumeType: gp2
+          - InstanceType: !Join ['', [!Ref InstanceType, '.24xlarge']]
+            WeightedCapacity: 96
+            BidPriceAsPercentageOfOnDemandPrice:
+              Ref: BidPercentage
+            EbsConfiguration:
+              EbsOptimized: true
+              EbsBlockDeviceConfigs:
+              - VolumeSpecification:
+                  SizeInGB: 
+                    Ref: DiskSizeGB
+                  VolumeType: gp2
+      EbsRootVolumeSize: 32
+      JobFlowRole: EMR_EC2_DefaultRole
+      ScaleDownBehavior: TERMINATE_AT_TASK_COMPLETION
+      ServiceRole: EMR_DefaultRole
+      ReleaseLabel: 
+        Ref: EMRReleaseLabel
+      LogUri: 
+        Ref: EMRLogBucket
+      VisibleToAllUsers: True
+      Tags:
+      - Key: Name
+        Value: 
+          Ref: NameTag
+      - Key: Owner
+        Value:
+          Ref: OwnerTag
+      - Key: Project
+        Value:
+          Ref: ProjectTag
+Outputs:
+  ClusterId:
+    Description: Cluster ID
+    Value: 
+      Ref: SparkCluster
+  EMRMasterDNS:
+    Description: EMR Master node public dns
+    Value: !GetAtt 
+      - SparkCluster
+      - MasterPublicDNS
+  SpotCPUCount:
+    Description: Number of CPU to provision on spot instances
+    Value: 
+      Ref: SpotCPUCount  
+  EC2InstanceType:
+    Description: EC2 Instance type
+    Value: 
+      Ref: InstanceType
+  DiskSize:
+    Description: EBS Volume size (GB) for each node
+    Value: 
+      Ref: DiskSizeGB
+  ZeppelinRepo:
+    Description: GitHub repository where zeppelin notebooks are saved
+    Value:
+      !Join ['', ['https://github.com/', !Ref GitHubRepository]]
