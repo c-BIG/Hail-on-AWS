@@ -12,7 +12,6 @@ INSTALL="false"
 OUTPUT_PATH=""
 VEP_VERSION="95"
 ASSEMBLY="GRCh38"
-IMAGE="konradjk/vep95_loftee:0.2"
 CACHE="homo_sapiens_merged"
 
 # Read CLI script parameters
@@ -67,6 +66,20 @@ then
   exit 0
 fi
 
+# Select IMAGE
+if [[ "$VEP_VERSION" == "95" ]]
+then
+  IMAGE="konradjk/vep95_loftee:0.2"
+elif [[ "$VEP_VERSION" == "92" ]]
+then
+  IMAGE="owjl/vep92_loftee:latest"
+else
+  echo "NO IMAGE FOUND FOR VEP$VEP_VERSION !"
+  echo '### END INSTALL_VEP.SH ###'
+  exit 0
+fi
+
+# Start Install
 echo '# Parameters #'
 echo "OUTPUT_PATH: $OUTPUT_PATH"
 echo "VEP_VERSION: $VEP_VERSION"
@@ -82,16 +95,16 @@ echo "word count = ${wc}"
 if [ "${wc}" -eq 0 ]
 then
   echo "vep data NOT FOUND for VEP v${VEP_VERSION} - ${CACHE} ${ASSEMBLY}"
-#  exit 1
+  exit 0
 fi
 
 echo '# Create directories #'
-sudo mkdir -p /mnt/vep/vep_data/${CACHE}
+sudo mkdir -p /mnt/vep/vep_data/${CACHE}/${VEP_VERSION}_${ASSEMBLY}
 sudo chmod -R a+rwx /mnt/vep
 sudo chown -R hadoop:hadoop /mnt/vep
 
 echo '# Download vep_data #'
-sudo aws s3 sync ${OUTPUT_PATH}${CACHE}/ /mnt/vep/vep_data/${CACHE}/
+sudo aws s3 sync ${OUTPUT_PATH}${CACHE}/${VEP_VERSION}_${ASSEMBLY}/ /mnt/vep/vep_data/${CACHE}/${VEP_VERSION}_${ASSEMBLY}/
 
 echo '# Install Docker #'
 sudo yum install docker -y

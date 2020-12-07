@@ -36,7 +36,7 @@ done
 if [ -z "$OUTPUT_PATH" ]
 then
   echo "OUTPUT_PATH Required !"
-  exit 1
+  exit 0
 fi
 
 echo '# Parameters #'
@@ -64,12 +64,14 @@ then
   sudo mkdir -p /opt/broad-hail
   cd /opt/broad-hail
   sudo git clone --branch $HAIL_VERSION --depth 1 https://github.com/broadinstitute/hail.git .
-
+  cd /opt/broad-hail/hail/
 
   echo '# Build Hail #'
+  # Fix java
   sudo ln -s /etc/alternatives/java_sdk/include /etc/alternatives/jre/include
-  cd /opt/broad-hail/hail/
-  sudo make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=2.12.12 SPARK_VERSION=3.0.0
+
+  # Build Hail
+  sudo make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=2.12.10 SPARK_VERSION=3.0.0
 
   # Test if Hail already build by another node
   wc=`aws s3 ls ${OUTPUT_PATH}site-packages/ | grep hail-${HAIL_VERSION}.dist-info | wc -c`
@@ -89,17 +91,27 @@ fi
 
 echo '# Install hail dependencies #'
 WHEELS="aiohttp>=3.6,<3.7
+aiohttp-session<2.8,>=2.7
+asyncinit<0.3,>=0.2.4
 bkzep
 bokeh>1.1,<1.3
 decorator<5
 Deprecated>=1.2.10,<1.3
+dill<0.4,>=0.3.1.1
+gcsfs==0.2.2
 google-cloud-storage==1.25.*
 humanize==1.0.0
+hurry.filesize==0.9
+nest-asyncio
 parsimonious<0.9
 pandas==0.25
+PyJWT
 pyspark>=2.4,<2.4.2
+python-json-logger==0.1.11
 requests==2.22.0
-scipy==1.3"
+scipy==1.3
+tabulate==0.8.3
+tqdm==4.42.1"
 
 for WHEEL_NAME in $WHEELS
 do

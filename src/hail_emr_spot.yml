@@ -1,5 +1,5 @@
 # Copyright 2019-2020 Maxime HEBRARD @ https://github.com/c-BIG
-# EMR v6.1.0 - Hadoop v3.2.1 - Java v1.8.0 - Python3 v3.7.9 - Spark v3.0.0 - Scala v2.12.12 - Zeppelin v0.9.0 - Hail v0.2.59 - VEP v95
+# EMR v6.1.0 - Hadoop v3.2.1 - Java v1.8.0 - Python3 v3.7.9 - Spark v3.0.0 - Scala v2.12.10 - Zeppelin v0.9.0 - Hail v0.2.59 - VEP v95
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Provision an EMR cluster on spot instances with Python3, Spark, Hail, ensembl-VEP and Zeppelin
 Metadata:
@@ -106,9 +106,10 @@ Parameters:
   HailVersion:
     Description: Version of Hail installed on the cluster.
     Type: String
-    Default: '0.2.59'
+    Default: '0.2.60'
     AllowedValues:
       - '0.2.59'
+      - '0.2.60'
   VEPInstall:
     Description: Include VEP in the stack
     Type: String
@@ -125,12 +126,14 @@ Parameters:
     Type: String
     Default: '95'
     AllowedValues:
+      - '92'
       - '95'
   Assembly:
     Description: Reference genome version for VEP analysis.
     Type: String
     Default: 'GRCh38'
     AllowedValues:
+      - 'GRCh37'
       - 'GRCh38'
   OwnerTag:
     Type: String
@@ -219,6 +222,8 @@ Resources:
               ZEPPELIN_NOTEBOOK_GIT_REMOTE_ACCESS_TOKEN: !Ref GitHubToken     
       Instances:
         AdditionalMasterSecurityGroups:
+        - Ref: SecurityGroup
+        AdditionalSlaveSecurityGroups:
         - Ref: SecurityGroup
         Ec2KeyName:
           Ref: KeyName
