@@ -9,7 +9,8 @@ echo '### INSTALL_HAIL.SH ###'
 
 # Default parameters
 OUTPUT_PATH=""
-HAIL_VERSION="0.2.58"
+HAIL_VERSION="0.2.60"
+EMR_VERSION="emr-6.1.0"
 PYTHON_PACKAGES="/usr/local/lib/python3.7/"
 
 # Read CLI script parameters
@@ -22,6 +23,10 @@ while [ $# -gt 0 ]; do
     --hail-version)
       shift
       HAIL_VERSION=$1
+      ;;
+      --emr-version)
+      shift
+      EMR_VERSION=$1
       ;;
     -*)
       error_msg "unrecognized option: $1"
@@ -42,6 +47,7 @@ fi
 echo '# Parameters #'
 echo "OUTPUT_PATH: $OUTPUT_PATH"
 echo "HAIL_VERSION: $HAIL_VERSION"
+echo "EMR_VERSION: $EMR_VERSION"
 echo "PYTHON_PACKAGES: $PYTHON_PACKAGES"
 
 echo '# Update system #'
@@ -54,8 +60,8 @@ sudo yum install -y lz4 lz4-devel
 sudo yum install -y git
 
 echo '# Test if hail exists #'
-echo " aws s3 ls ${OUTPUT_PATH}site-packages/| grep hail-${HAIL_VERSION}.dist-info | wc -c"
-wc=`aws s3 ls ${OUTPUT_PATH}site-packages/ | grep hail-${HAIL_VERSION}.dist-info | wc -c`
+echo " aws s3 ls ${OUTPUT_PATH}${EMR_VERSION}/site-packages/| grep hail-${HAIL_VERSION}.dist-info | wc -c"
+wc=`aws s3 ls ${OUTPUT_PATH}${EMR_VERSION}/site-packages/ | grep hail-${HAIL_VERSION}.dist-info | wc -c`
 echo "word count = ${wc}"
 
 if [ "${wc}" -eq 0 ]
@@ -70,23 +76,32 @@ then
   # Fix java
   sudo ln -s /etc/alternatives/java_sdk/include /etc/alternatives/jre/include
 
-  # Build Hail
-  sudo make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=2.12.10 SPARK_VERSION=3.0.0
+  # Adjust scala version
+  if [ "${EMR_VERSION}" = "emr-5.31.0" ]
+  then
+    sudo make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=2.11.12 SPARK_VERSION=2.4.6
+  elif [ "${EMR_VERSION}" = "emr-6.1.0" ]
+  then
+    sudo make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=2.12.10 SPARK_VERSION=3.0.0
+  else
+    echo "EMR version ${EMR_VERSION} not supported !"
+    exit 0
+  fi
 
   # Test if Hail already build by another node
-  wc=`aws s3 ls ${OUTPUT_PATH}site-packages/ | grep hail-${HAIL_VERSION}.dist-info | wc -c`
+  wc=`aws s3 ls ${OUTPUT_PATH}${EMR_VERSION}/site-packages/ | grep hail-${HAIL_VERSION}.dist-info | wc -c`
   if [ "${wc}" -eq 0 ]
   then
     echo '# Copy hail to S3'
-    aws s3 sync ${PYTHON_PACKAGES}site-packages/hail/ ${OUTPUT_PATH}site-packages/hail/
-    aws s3 sync ${PYTHON_PACKAGES}site-packages/hailtop/ ${OUTPUT_PATH}site-packages/hailtop/
-    aws s3 sync ${PYTHON_PACKAGES}site-packages/hail-${HAIL_VERSION}.dist-info/ ${OUTPUT_PATH}site-packages/hail-${HAIL_VERSION}.dist-info/
+    aws s3 sync ${PYTHON_PACKAGES}site-packages/hail/ ${OUTPUT_PATH}${EMR_VERSION}/site-packages/hail/
+    aws s3 sync ${PYTHON_PACKAGES}site-packages/hailtop/ ${OUTPUT_PATH}${EMR_VERSION}/site-packages/hailtop/
+    aws s3 sync ${PYTHON_PACKAGES}site-packages/hail-${HAIL_VERSION}.dist-info/ ${OUTPUT_PATH}${EMR_VERSION}/site-packages/hail-${HAIL_VERSION}.dist-info/
   fi
 else
   echo '# Download hail #'
-  sudo aws s3 sync ${OUTPUT_PATH}site-packages/hail/ ${PYTHON_PACKAGES}site-packages/hail/
-  sudo aws s3 sync ${OUTPUT_PATH}site-packages/hailtop/ ${PYTHON_PACKAGES}site-packages/hailtop/
-  sudo aws s3 sync ${OUTPUT_PATH}site-packages/hail-${HAIL_VERSION}.dist-info/ ${PYTHON_PACKAGES}site-packages/hail-${HAIL_VERSION}.dist-info/
+    sudo aws s3 sync ${OUTPUT_PATH}${EMR_VERSION}/site-packages/hail/ ${PYTHON_PACKAGES}site-packages/hail/
+    sudo aws s3 sync ${OUTPUT_PATH}${EMR_VERSION}/site-packages/hailtop/ ${PYTHON_PACKAGES}site-packages/hailtop/
+    sudo aws s3 sync ${OUTPUT_PATH}${EMR_VERSION}/site-packages/hail-${HAIL_VERSION}.dist-info/ ${PYTHON_PACKAGES}site-packages/hail-${HAIL_VERSION}.dist-info/
 fi
 
 echo '# Install hail dependencies #'
