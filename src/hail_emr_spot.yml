@@ -1,4 +1,5 @@
-# Copyright 2019-2020 Maxime HEBRARD @ https://github.com/c-BIG
+# Copyright 2019-2021 Maxime HEBRARD @ https://github.com/c-BIG
+# EMR v5.31.0 - Hadoop v2.10.0 - Java v1.8.0 - Python3 v3.7.9 - Spark v2.4.6 - Scala v2.11.12 - Zeppelin v0.8.2 - Hail v0.2.60 - VEP v95
 # EMR v6.1.0 - Hadoop v3.2.1 - Java v1.8.0 - Python3 v3.7.9 - Spark v3.0.0 - Scala v2.12.10 - Zeppelin v0.9.0 - Hail v0.2.59 - VEP v95
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Provision an EMR cluster on spot instances with Python3, Spark, Hail, ensembl-VEP and Zeppelin
@@ -48,6 +49,7 @@ Parameters:
     Type: String
     Default: emr-6.1.0
     AllowedValues:
+      - emr-5.31.0
       - emr-6.1.0
   EMRLogBucket:
     Description: S3 bucket address for EMR log storage
@@ -173,6 +175,8 @@ Resources:
           - Ref: CFNBucket
           - --hail-version
           - Ref: HailVersion
+          - --emr-version
+          - Ref: EMRReleaseLabel
       - Name: install_zeppelin
         ScriptBootstrapAction:
           Path: !Sub "${CFNBucket}install_zeppelin.sh"
@@ -198,7 +202,7 @@ Resources:
       Configurations:
       - Classification: emrfs-site
         ConfigurationProperties:
-          fs.s3.maxConnections: 100
+          fs.s3.maxConnections: 1000
       - Classification: livy-conf
         ConfigurationProperties:
           livy.server.session.timeout-check": false,

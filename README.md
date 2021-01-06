@@ -189,4 +189,11 @@ ht.write('s3://[Path/to/table].vep.ht', overwrite=True)
 
 In Hail v0.2.60, the function `hl.export_elasticsearch` is not compatible with scala v2.12.x that is included in emr-6.x. Hail team is actively working on that issue, see [#9767](https://github.com/hail-is/hail/issues/9767)
 
+In the mean time we can deploy Hail on emr-5.x that includes scala v2.11.x where `hl.export_elasticsearch` works.
+
+Note that emr-6.x and emr-5.x includes different version of zeppelin (v0.8 vs v0.9) with incompatibility. Therefore the notebooks created on one emr version will not appears on the other emr version that.
+
+### CloudFormation template parameters
+* EMRReleaseLabel: `emr-5.31.0`
+
 ## END
