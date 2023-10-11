@@ -1,19 +1,20 @@
 # Hail-on-AWS
 
-Deploy an [EMR cluster on AWS](https://aws.amazon.com/emr/), with Spark, [Hail](https://hail.is/index.html), [Zeppelin](https://zeppelin.apache.org/) and [Ensembl VEP](https://ensembl.org/info/docs/tools/vep/index.html) using [CloudFormation service](https://aws.amazon.com/cloudformation/).
+Deploy an [EMR cluster on AWS](https://aws.amazon.com/emr/), with Spark, [Hail](https://hail.is/index.html), [JupyterLab](https://jupyter.org/about.html) and [Ensembl VEP](https://ensembl.org/info/docs/tools/vep/index.html) using [CloudFormation service](https://aws.amazon.com/cloudformation/).
 
 ## Requirements
 
 * A valid AWS account with appropriate permissions
 * A VPC, a subnet and a security group ready to ensure appropriate access to the cluster
 * A S3 bucket to receive the data
-* A github repository to store the zeppelin notebooks
+* A github repository to store the notebooks
 * A github account with write permission on the repository and a personal access token with full repo permissions.
 
-In addition you may want to install / be able to run Ensembl's Variant Effect Predictor (VEP) 
-* A S3 bucket containining VEP cache data, see section [Install Ensembl's Variant Effect Predictor (VEP)](#Install-Ensembls-Variant-Effect-Predictor-VEP).
+In addition you may want to install / be able to run Ensembl's Variant Effect Predictor (VEP)
 
-## Create a Spark/Hail/Zeppelin EMR using AWS CloudFormation service
+* A S3 bucket containining VEP cache data, see section [Install Ensembl's Variant Effect Predictor (VEP)](#install-ensembls-variant-effect-predictor-vep).
+
+## Create a Spark/Hail/Jupyter EMR using AWS CloudFormation service
 
 * Clone this repository
 
@@ -38,7 +39,7 @@ aws s3 sync src/ s3://[Bucket]/Hail-on-AWS/
 The template used below create a cluster with cheaper instance (AWS Spot instances). Note that if user require 0 CPU, a minimal cluster is created with 1 MASTER of 4 CPUs and 1 CORE of 4 CPUs, both instances been charged on demand. Additional spot instances are created when `SpotCPUCount > 4`
 
 * Template URL: `https://s3.amazonaws.com/[Bucket]/Hail-on-AWS/hail_emr_spot.yml`
-* Stack Name: `EMRCluster-hail-zep-vep`
+* Stack Name: `EMRCluster-hail-lab-vep`
 * EMRClusterName `emr-cluster`
 * EMRReleaseLabel `emr-6.1.0`
 * EMRLogBucket `s3n://[Bucket]/EMR_logs/`
@@ -62,7 +63,7 @@ The template used below create a cluster with cheaper instance (AWS Spot instanc
 * OwnerTag `owner`
 * ProjectTag `project`
 
-## Accessing the AWS CloudFormation created Spark/Hail/Zeppelin EMR
+## Accessing the AWS CloudFormation created Spark/Hail/Jupyter EMR
 
 ### Connect to EMR master node (shell)
 
@@ -71,62 +72,43 @@ The template used below create a cluster with cheaper instance (AWS Spot instanc
   # Replace [path/to/key] below by the path to your EC2 Key .pem file
   # SSH on the master node (with tunnel)
   # * Hadoop                :8088
-  # * Zeppelin              :8890
+  # * Jupyter               :9443
   # * SparkUI               :18080
-  MASTER=[EMRMasterDNS]; ssh -i [path/to/key].pem -L 8088:$MASTER:8088 -L 8890:$MASTER:8890 -L 18080:$MASTER:18080 hadoop@$MASTER
+  MASTER=[EMRMasterDNS]; ssh -i [path/to/key].pem -L 8088:$MASTER:8088 -L 9443:$MASTER:9443 -L 18080:$MASTER:18080 hadoop@$MASTER
  ```
 
-### Accessing the EMR cluster via Zeppelin UI  
-* Visit [Zeppelin](http://localhost:8890)
-* Create a new note(book)
+### Accessing the EMR cluster via Jupyter Lab
+
+* Visit [Jupyter](https://localhost:9443/user/jovyan/lab)
+* Create a new notebook with pyspak kernel
 * Import and initialize Hail and SparkContext
 
 ```py
-%pyspark
 # Import and initialize Hail
 import hail as hl
 hl.init(sc)
 ```
 
-* Import Bokehjs
+### Commit changes to Jupyter Notebook
 
-```py
-%pyspark
-# Import bokeh
-from bokeh.io import show, output_notebook
-from bokeh.plotting import figure
-# Import bokeh-zeppelin
-import bkzep
-output_notebook(notebook_type='zeppelin')
-```
+TBD
 
-### Commit changes to Zeppelin note(book)
-  * in Zeppelin menu, click on **Version control**
-  * Write a commit message and click on **Commit**
-  * Click on **Ok**
-* Save your work on github
+## Install Ensembl's Variant Effect Predictor (VEP)
 
-```sh
-%sh
-cd /opt/zeppelin
-git push origin master
-```
-
-## Install Ensembl's Variant Effect Predictor (VEP) 
-First we need to download VEP cache and store it on AWS. 
-Be aware that the data represents ~25Gb. 
+First we need to download VEP cache and store it on AWS.
+Be aware that the data represents ~25Gb.
 Set `DiskSizeGB` CloudFormation template parameter accordingly
 
-### Connect to EMR master node (shell)
+### Re-connect to EMR master node (shell)
 
 ```sh
   # Replace [EMRMasterDNS] below by the value displayed in stack Outputs
   # Replace [path/to/key] below by the path to your EC2 Key .pem file
   # SSH on the master node (with tunnel)
   # * Hadoop                :8088
-  # * Zeppelin              :8890
+  # * Jupyter               :9443
   # * SparkUI               :18080
-  MASTER=[EMRMasterDNS]; ssh -i [path/to/key].pem -L 8088:$MASTER:8088 -L 8890:$MASTER:8890 -L 18080:$MASTER:18080 hadoop@$MASTER
+  MASTER=[EMRMasterDNS]; ssh -i [path/to/key].pem -L 8088:$MASTER:8088 -L 9443:$MASTER:9443 -L 18080:$MASTER:18080 hadoop@$MASTER
 ```
 
 ### Download VEP Docker image
@@ -159,10 +141,10 @@ docker run -v /mnt/vep/vep_data:/opt/vep/.vep -w /opt/vep/src/ensembl-vep $IMAGE
 aws s3 cp /mnt/vep/vep_data//homo_sapiens_merged/ s3://[Bucket]/Hail-on-AWS/vep_data/homo_sapiens_merged/ --recursive
 ```
 
-### CloudFormation template parameters
+### CloudFormation template parameters (VEP)
+
 Now we can create a cluster with VEP installed by default
 
-### CloudFormation template parameters
 * DiskSizeGB: `50`
 * VEPInstall: `true`
 * VEPBucket: `s3://[Bucket]/Hail-on-AWS/vep_data/`
@@ -185,15 +167,15 @@ ht_vep = hl.vep(ht_nostar, 's3://[Bucket]/Hail-on-AWS/vep_data/vep[VEPVersion]_[
 # Write table
 ht.write('s3://[Path/to/table].vep.ht', overwrite=True)
 ```
+
 ## Export to Elasticsearch
 
 In Hail v0.2.60, the function `hl.export_elasticsearch` is not compatible with scala v2.12.x that is included in emr-6.x. Hail team is actively working on that issue, see [#9767](https://github.com/hail-is/hail/issues/9767)
 
 In the mean time we can deploy Hail on emr-5.x that includes scala v2.11.x where `hl.export_elasticsearch` works.
 
-Note that emr-6.x and emr-5.x includes different version of zeppelin (v0.8 vs v0.9) with incompatibility. Therefore the notebooks created on one emr version will not appears on the other emr version that.
+### CloudFormation template parameters (elasticsearch)
 
-### CloudFormation template parameters
 * EMRReleaseLabel: `emr-5.31.0`
 
 ## END
