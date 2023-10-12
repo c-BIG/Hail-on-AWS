@@ -5,7 +5,7 @@ exec 3>&1 4>&2
 trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>>/tmp/cloudcreation_log.out 2>&1
 
-echo '### STEP_JUPYTER.SH v4.0.0 ###'
+echo '### STEP_JUPYTER.SH v4.1.0 ###'
 
 # Default parameters
 BRANCH="master"
@@ -71,7 +71,7 @@ echo "ls-rempte = ${lsr}"
 
 if [ "${lsr}" -eq 0 ]
 then
-  echo '# Clone main & create branch #'
+  echo '# Clone main #'
   sudo docker exec jupyterhub \
   git clone --depth 1 https://${ACCOUNT}:${TOKEN}@github.com/${REPO}.git
 
