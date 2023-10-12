@@ -81,8 +81,8 @@ then
   cd Python-${PYTHON_VERSION}.${PYTHON_PATCH}
 
   # We aim for similar `CONFIG_ARGS` that AL2 Python is built with
-  # ./configure --enable-loadable-sqlite-extensions --with-dtrace --with-lto --enable-optimizations --with-system-expat \
-      # --prefix=/usr/local/python${PYTHON_VERSION}.${PYTHON_PATCH}
+  ./configure --enable-loadable-sqlite-extensions --with-dtrace --with-lto --enable-optimizations --with-system-expat \
+      --prefix=/usr/local/python${PYTHON_VERSION}.${PYTHON_PATCH}
 
   # Install into /usr/local/python3.x.x
   # Note that "make install" links /usr/local/python3.x.x/bin/python3 while "altinstall" does not
