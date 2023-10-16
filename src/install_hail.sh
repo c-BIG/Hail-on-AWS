@@ -5,7 +5,7 @@ exec 3>&1 4>&2
 trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>>/tmp/cloudcreation_log.out 2>&1
 
-echo '### INSTALL_HAIL.SH v4.3.4 ###'
+echo '### INSTALL_HAIL.SH v4.3.5 ###'
 
 # Read CLI script parameters
 while [ $# -gt 0 ]; do
@@ -69,30 +69,20 @@ echo "SCALA_VERSION: $SCALA_VERSION"
 if [ "${PYTHON_VERSION}" = "3.9" ]
 then
   echo "# Update python to $PYTHON_VERSION.$PYTHON_PATCH #"
-  # From utilities/emr-ec2-custom-python3/custom-python/install-python.sh
-
-  # Replace old OpenSSL and add build utilities
-  sudo yum -y remove openssl-devel*
-  sudo yum -y install gcc openssl11-devel bzip2-devel libffi-devel tar gzip wget make expat-devel
-
-  # Install Python
-  wget https://www.python.org/ftp/python/${PYTHON_VERSION}.${PYTHON_PATCH}/Python-${PYTHON_VERSION}.${PYTHON_PATCH}.tgz
-  tar xzvf Python-${PYTHON_VERSION}.${PYTHON_PATCH}.tgz
+  # FROM https://repost.aws/questions/QUfxjbaGrXRTSKGy4-rnQ8Uw/how-to-upgrade-python-version-in-emr-since-python-3-7-support-discontinued
+  sudo yum install libffi-devel -y
+  sudo wget https://www.python.org/ftp/python/${PYTHON_VERSION}.${PYTHON_PATCH}/Python-${PYTHON_VERSION}.${PYTHON_PATCH}.tgz   
+  sudo tar -zxvf Python-${PYTHON_VERSION}.${PYTHON_PATCH}.tgz
   cd Python-${PYTHON_VERSION}.${PYTHON_PATCH}
-
-  # We aim for similar `CONFIG_ARGS` that AL2 Python is built with
-  ./configure --enable-loadable-sqlite-extensions --with-dtrace --with-lto --enable-optimizations --with-system-expat \
-      --prefix=/usr/local/python${PYTHON_VERSION}.${PYTHON_PATCH}
-
-  # Install into /usr/local/python3.x.x
-  # Note that "make install" links /usr/local/python3.x.x/bin/python3 while "altinstall" does not
+  sudo ./configure --enable-optimizations
   sudo make altinstall
-  # sudo make install
+  python3.9 -m pip install --upgrade awscli --user
+  sudo ln -sf /usr/local/bin/python3.9 /usr/bin/python3
 
-  # Activate Python
+  # # Activate Python
   # sudo update-alternatives --install /usr/bin/python python /usr/local/python${PYTHON_VERSION}.${PYTHON_PATCH}/bin/python${PYTHON_VERSION} 10
-  # sudo mkdir /usr/local/lib/python${PYTHON_VERSION}/
-  # sudo ln -s /usr/local/python${PYTHON_VERSION}.${PYTHON_PATCH}/lib/python${PYTHON_VERSION}/site-packages /usr/local/lib/python${PYTHON_VERSION}/site-packages
+  # # sudo mkdir /usr/local/lib/python${PYTHON_VERSION}/
+  # # sudo ln -s /usr/local/python${PYTHON_VERSION}.${PYTHON_PATCH}/lib/python${PYTHON_VERSION}/site-packages /usr/local/lib/python${PYTHON_VERSION}/site-packages
 fi
 
 # PYTHON_PACKAGES="/usr/local/lib/python3.7/"
@@ -108,6 +98,8 @@ fi
 # echo '# Fix Java #'
 # sudo ln -s /etc/alternatives/java_sdk/include /etc/alternatives/jre/include
 # echo 3 | sudo alternatives --config java
+# echo
+
 
 # echo '# Clone Hail #'
 # git clone --branch $HAIL_VERSION --depth 1 https://github.com/broadinstitute/hail.git
