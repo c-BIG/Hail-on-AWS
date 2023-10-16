@@ -5,7 +5,7 @@ exec 3>&1 4>&2
 trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>>/tmp/cloudcreation_log.out 2>&1
 
-echo '### INSTALL_HAIL.SH v4.3.3 ###'
+echo '### INSTALL_HAIL.SH v4.3.4 ###'
 
 # Read CLI script parameters
 while [ $# -gt 0 ]; do
@@ -86,7 +86,7 @@ then
 
   # Install into /usr/local/python3.x.x
   # Note that "make install" links /usr/local/python3.x.x/bin/python3 while "altinstall" does not
-  # sudo make altinstall
+  sudo make altinstall
   # sudo make install
 
   # Fix Python
