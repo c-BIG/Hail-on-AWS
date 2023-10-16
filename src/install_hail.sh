@@ -89,9 +89,10 @@ then
   sudo make altinstall
   # sudo make install
 
-  # Fix Python
-  # sudo update-alternatives --install /usr/bin/python python /usr/local/python3.9.18/bin/python3 10
-  # sudo ln -s /usr/local/python3.9.18/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+  # Activate Python
+  # sudo update-alternatives --install /usr/bin/python python /usr/local/python${PYTHON_VERSION}.${PYTHON_PATCH}/bin/python${PYTHON_VERSION} 10
+  # sudo mkdir /usr/local/lib/python${PYTHON_VERSION}/
+  # sudo ln -s /usr/local/python${PYTHON_VERSION}.${PYTHON_PATCH}/lib/python${PYTHON_VERSION}/site-packages /usr/local/lib/python${PYTHON_VERSION}/site-packages
 fi
 
 # PYTHON_PACKAGES="/usr/local/lib/python3.7/"
@@ -106,6 +107,7 @@ fi
 
 # echo '# Fix Java #'
 # sudo ln -s /etc/alternatives/java_sdk/include /etc/alternatives/jre/include
+# echo 3 | sudo alternatives --config java
 
 # echo '# Clone Hail #'
 # git clone --branch $HAIL_VERSION --depth 1 https://github.com/broadinstitute/hail.git
