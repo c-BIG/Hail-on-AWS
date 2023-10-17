@@ -5,7 +5,7 @@ exec 3>&1 4>&2
 trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>>/tmp/cloudcreation_log.out 2>&1
 
-echo '### INSTALL_HAIL.SH v4.3.6 ###'
+echo '### INSTALL_HAIL.SH v4.4.4 ###'
 
 # Read CLI script parameters
 while [ $# -gt 0 ]; do
@@ -65,6 +65,9 @@ echo "PYTHON_VERSION: $PYTHON_VERSION.$PYTHON_PATCH"
 echo "SPARK_VERSION: $SPARK_VERSION"
 echo "SCALA_VERSION: $SCALA_VERSION"
 
+echo '# Update system #'
+sudo yum update -y --skip-broken
+
 # python default to 3.7
 if [ "${PYTHON_VERSION}" = "3.9" ]
 then
@@ -76,39 +79,37 @@ then
   cd Python-${PYTHON_VERSION}.${PYTHON_PATCH}
   sudo ./configure --enable-optimizations
   sudo make altinstall
-  python3.9 -m pip install --upgrade awscli --user
   sudo ln -sf /usr/local/bin/python3.9 /usr/bin/python3
+  python3 -m pip install --upgrade awscli --user
 
-  # # Activate Python
-  # sudo update-alternatives --install /usr/bin/python python /usr/local/python${PYTHON_VERSION}.${PYTHON_PATCH}/bin/python${PYTHON_VERSION} 10
-  # # sudo mkdir /usr/local/lib/python${PYTHON_VERSION}/
-  # # sudo ln -s /usr/local/python${PYTHON_VERSION}.${PYTHON_PATCH}/lib/python${PYTHON_VERSION}/site-packages /usr/local/lib/python${PYTHON_VERSION}/site-packages
 fi
 
-# PYTHON_PACKAGES="/usr/local/lib/python3.7/"
-
-echo '# Update system #'
-sudo yum update -y --skip-broken
-sudo python -m pip install --upgrade pip
+# WARNING: The script wheel is installed in '/home/hadoop/.local/bin' which is not on PATH.
+echo '# Update PATH #'
+PATH=$PATH:/home/hadoop/.local/bin
 
 echo '# Install libs #'
+pip3.9 install --upgrade pip
 sudo yum install -y lz4 lz4-devel
 sudo yum install -y git
 
-# echo '# Update Java to v11 #'
-# sudo ln -s /etc/alternatives/java_sdk/include /etc/alternatives/jre/include
+echo '# Update Java to v11 #'
 echo 3 | sudo alternatives --config java
 echo
 
+echo '# Clone Hail #'
+git clone --branch $HAIL_VERSION --depth 1 https://github.com/broadinstitute/hail.git
 
-# echo '# Clone Hail #'
-# git clone --branch $HAIL_VERSION --depth 1 https://github.com/broadinstitute/hail.git
+echo '# Build Hail #'
+# fatal: detected dubious ownership in repository at '/emr/instance-controller/lib/bootstrap-actions/1/Python-3.9.18/hail'
+# To add an exception for this directory, call:
+# git config --global --add safe.directory /emr/instance-controller/lib/bootstrap-actions/1/Python-3.9.18/hail
+cd hail/hail/
+make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=${SCALA_VERSION} SPARK_VERSION=${SPARK_VERSION}
 
-# echo '# Build Hail #'
-# cd hail/hail/
-# make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=${SCALA_VERSION} SPARK_VERSION=${SPARK_VERSION}
-
-# echo '# Fix Hail #'
-# sudo ln -s /usr/local/lib/python${PYTHON_VERSION}/site-packages/hail/backend /opt/hail/backend
+echo '# Link Hail #'
+# sudo ln -sf /usr/local/lib/python${PYTHON_VERSION}/site-packages/hail/backend /opt/hail/backend
+sudo mkdir /opt/hail/
+sudo ln -sf /home/hadoop/.local/lib/python${PYTHON_VERSION}/site-packages/hail/backend /opt/hail/backend
 
 echo '### END INSTALL_HAIL.SH ###'
