@@ -5,7 +5,7 @@ exec 3>&1 4>&2
 trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>>/tmp/cloudcreation_log.out 2>&1
 
-echo '### INSTALL_HAIL.SH v4.3.5 ###'
+echo '### INSTALL_HAIL.SH v4.3.6 ###'
 
 # Read CLI script parameters
 while [ $# -gt 0 ]; do
@@ -87,18 +87,18 @@ fi
 
 # PYTHON_PACKAGES="/usr/local/lib/python3.7/"
 
-# echo '# Update system #'
-# sudo yum update -y --skip-broken
-# sudo python -m pip install --upgrade pip
+echo '# Update system #'
+sudo yum update -y --skip-broken
+sudo python -m pip install --upgrade pip
 
-# echo '# Install libs #'
-# sudo yum install -y lz4 lz4-devel
-# sudo yum install -y git
+echo '# Install libs #'
+sudo yum install -y lz4 lz4-devel
+sudo yum install -y git
 
-# echo '# Fix Java #'
+# echo '# Update Java to v11 #'
 # sudo ln -s /etc/alternatives/java_sdk/include /etc/alternatives/jre/include
-# echo 3 | sudo alternatives --config java
-# echo
+echo 3 | sudo alternatives --config java
+echo
 
 
 # echo '# Clone Hail #'
