@@ -5,9 +5,10 @@ exec 3>&1 4>&2
 trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>>/tmp/cloudcreation_log.out 2>&1
 
-echo '### STEP_JUPYTER.SH v4.2.1 ###'
+echo '### STEP_JUPYTER.SH v4.3.0.0 ###'
 
 # Default parameters
+INTEGRATION="false"
 BRANCH="master"
 ACCOUNT=""
 REPO=""
@@ -16,6 +17,10 @@ TOKEN=""
 # Read CLI script parameters
 while [ $# -gt 0 ]; do
     case "$1" in
+    --integration)
+      shift
+      INTEGRATION=$1
+      ;;
     --branch)
       shift
       BRANCH=$1
@@ -43,6 +48,7 @@ while [ $# -gt 0 ]; do
 done
 
 echo '# Parameters #'
+echo "INTEGRATION: $INTEGRATION"
 echo "BRANCH: $BRANCH"
 echo "ACCOUNT: $ACCOUNT"
 echo "REPO: $REPO"
@@ -67,11 +73,9 @@ echo '# Install docker libs #'
 sudo docker exec jupyterhub conda install -c conda-forge \
 jupyterlab git jupyterlab-git ipympl
 
-# Test if install needed
-if [ -z "$TOKEN" ]
-then
-  echo '# TOKEN not defined #'
-  echo '# No git integration #'
+# Test if integration needed
+if [[ "$INTEGRATION" == "false" ]]; then
+  echo '# NO GIT INTEGRATION #'
 else
   echo '# Clone main #'
   sudo docker exec jupyterhub \

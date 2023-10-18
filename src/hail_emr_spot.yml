@@ -24,6 +24,7 @@ Metadata:
     - Label:
         default: Stack Options
       Parameters:
+        - GitIntegration
         - GitHubAccount
         - GitHubRepository
         - GitHubToken
@@ -47,11 +48,11 @@ Parameters:
   EMRReleaseLabel:
     Description: EMR release label emr-6.1.0(Hail-0.2.60), emr-6.9.1(Hail-0.2.124)
     Type: String
-    Default: emr-6.9.1
+    Default: emr-6.11.1
     AllowedValues:
       - emr-5.31.0
       - emr-6.1.0
-      - emr-6.9.1
+      - emr-6.11.1
   EMRLogBucket:
     Description: S3 bucket address for EMR log storage
     Type: String
@@ -91,6 +92,13 @@ Parameters:
     MinValue: '1'
     MaxValue: '100'
     Default: '45'
+  GitIntegration:
+    Description: Link a GitHub repository to the stack
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
   GitHubAccount:
     Description: GitHub username that push/pull the repository
     Type: String
@@ -298,6 +306,8 @@ Resources:
             Jar: s3://ap-southeast-1.elasticmapreduce/libs/script-runner/script-runner.jar
             Args:
               - !Sub "${CFNBucket}step_jupyter.sh"
+              - --integration
+              - !Ref GitIntegration
               - --branch
               - !Ref OwnerTag
               - --account
