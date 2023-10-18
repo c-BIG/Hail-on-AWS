@@ -96,21 +96,19 @@ echo '# Install libs #'
 sudo yum install -y lz4 lz4-devel
 sudo yum install -y git
 
-# echo '# Clone Hail #'
-# cd /tmp
-# git clone --branch $HAIL_VERSION --depth 1 https://github.com/broadinstitute/hail.git
+echo '# Clone Hail #'
+cd /tmp
+git clone --branch $HAIL_VERSION --depth 1 https://github.com/broadinstitute/hail.git
 
-# echo '# Build Hail #'
-# cd hail/hail/
-# make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=${SCALA_VERSION} SPARK_VERSION=${SPARK_VERSION}
+echo '# Build Hail #'
+cd hail/hail/
+make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=${SCALA_VERSION} SPARK_VERSION=${SPARK_VERSION}
 
-# # [notice] A new release of pip is available: 23.0.1 -> 23.3
-# # [notice] To update, run: pip3.9 install --upgrade pip
+# [notice] A new release of pip is available: 23.0.1 -> 23.3
+# [notice] To update, run: pip3.9 install --upgrade pip
 
-# echo '# Link Hail #'
-# # # sudo ln -sf /usr/local/lib/python${PYTHON_VERSION}/site-packages/hail/backend /opt/hail/backend
-# sudo mkdir /opt/hail/
-# sudo ln -sf /home/hadoop/.local/lib/python${PYTHON_VERSION}/site-packages/hail/backend /opt/hail/backend
-
+echo '# Link Hail #'
+sudo mkdir /opt/hail/
+sudo ln -sf /home/hadoop/.local/lib/python${PYTHON_VERSION}/site-packages/hail/backend /opt/hail/backend
 
 echo '### END INSTALL_HAIL.SH ###'
