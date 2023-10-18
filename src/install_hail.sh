@@ -78,6 +78,9 @@ then
   sudo make altinstall
   sudo ln -sf /usr/local/bin/python3.9 /usr/bin/python3
   # python3 -m pip install --upgrade awscli --user
+
+  # WARNING: The script pip3.9 is installed in '/usr/local/bin' which is not on PATH.
+  # Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
 fi
 
 # WARNING: The script wheel is installed in '/home/hadoop/.local/bin' which is not on PATH.
@@ -88,31 +91,17 @@ echo '# Update Java to v11 #'
 echo 3 | sudo alternatives --config java
 echo
 
-# echo '# Install libs #'
+echo '# Install libs #'
 # pip3.9 install --upgrade pip
-# sudo yum install -y lz4 lz4-devel
-# sudo yum install -y git
+sudo yum install -y lz4 lz4-devel
+sudo yum install -y git
 
 # echo '# Clone Hail #'
-# cd /tmp
-# git clone --branch $HAIL_VERSION --depth 1 https://github.com/broadinstitute/hail.git
+cd /tmp
+git clone --branch $HAIL_VERSION --depth 1 https://github.com/broadinstitute/hail.git
 
-# echo '# Build Hail #'
-# cd hail/hail/
-# make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=${SCALA_VERSION} SPARK_VERSION=${SPARK_VERSION}
-
-# ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
-# awscli 1.29.64 requires botocore==1.31.64, but you have botocore 1.31.41 which is incompatible.
-# awscli 1.29.64 requires rsa<4.8,>=3.1.2, but you have rsa 4.9 which is incompatible.
-# awscli 1.29.64 requires s3transfer<0.8.0,>=0.7.0, but you have s3transfer 0.6.2 which is incompatible.
-
-# Successfully installed hail-0.2.124
-# WARNING: There was an error checking the latest version of pip.
-# hailctl config set query/backend spark
-
-# echo '# Link Hail #'
-# # sudo ln -sf /usr/local/lib/python${PYTHON_VERSION}/site-packages/hail/backend /opt/hail/backend
-# sudo mkdir /opt/hail/
-# sudo ln -sf /home/hadoop/.local/lib/python${PYTHON_VERSION}/site-packages/hail/backend /opt/hail/backend
+echo '# Build Hail #'
+cd hail/hail/
+make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=${SCALA_VERSION} SPARK_VERSION=${SPARK_VERSION}
 
 echo '### END INSTALL_HAIL.SH ###'
