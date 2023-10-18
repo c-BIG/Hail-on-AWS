@@ -5,7 +5,7 @@ exec 3>&1 4>&2
 trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>>/tmp/cloudcreation_log.out 2>&1
 
-echo '### INSTALL_HAIL.SH v4.5.0 ###'
+echo '### INSTALL_HAIL.SH v4.5.1 ###'
 
 # Read CLI script parameters
 while [ $# -gt 0 ]; do
@@ -97,11 +97,20 @@ sudo yum install -y lz4 lz4-devel
 sudo yum install -y git
 
 # echo '# Clone Hail #'
-cd /tmp
-git clone --branch $HAIL_VERSION --depth 1 https://github.com/broadinstitute/hail.git
+# cd /tmp
+# git clone --branch $HAIL_VERSION --depth 1 https://github.com/broadinstitute/hail.git
 
-echo '# Build Hail #'
-cd hail/hail/
-make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=${SCALA_VERSION} SPARK_VERSION=${SPARK_VERSION}
+# echo '# Build Hail #'
+# cd hail/hail/
+# make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=${SCALA_VERSION} SPARK_VERSION=${SPARK_VERSION}
+
+# # [notice] A new release of pip is available: 23.0.1 -> 23.3
+# # [notice] To update, run: pip3.9 install --upgrade pip
+
+# echo '# Link Hail #'
+# # # sudo ln -sf /usr/local/lib/python${PYTHON_VERSION}/site-packages/hail/backend /opt/hail/backend
+# sudo mkdir /opt/hail/
+# sudo ln -sf /home/hadoop/.local/lib/python${PYTHON_VERSION}/site-packages/hail/backend /opt/hail/backend
+
 
 echo '### END INSTALL_HAIL.SH ###'

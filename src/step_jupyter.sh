@@ -5,7 +5,7 @@ exec 3>&1 4>&2
 trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>>/tmp/cloudcreation_log.out 2>&1
 
-echo '### STEP_JUPYTER.SH v4.3.0.0 ###'
+echo '### STEP_JUPYTER.SH v4.3.1 ###'
 
 # Default parameters
 INTEGRATION="false"
@@ -70,6 +70,7 @@ sudo python3 -m pip install umap-learn
 sudo python3 -m pip install pycrypto
 
 echo '# Install docker libs #'
+sudo docker exec jupyterhub conda update -n base conda
 sudo docker exec jupyterhub conda install -c conda-forge \
 jupyterlab git jupyterlab-git ipympl
 
