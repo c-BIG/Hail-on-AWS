@@ -13,6 +13,7 @@ Metadata:
       Parameters:
         - EMRClusterName
         - EMRReleaseLabel
+        - CFNBucket
         - EMRLogBucket
         - Subnet
         - SecurityGroup
@@ -28,7 +29,6 @@ Metadata:
         - GitHubAccount
         - GitHubRepository
         - GitHubToken
-        - CFNBucket
         - VEPInstall
         - VEPBucket
         - VEPVersion

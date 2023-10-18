@@ -37,22 +37,19 @@ then
   PYTHON_VERSION='3.7'
   SPARK_VERSION='2.4.6'
   SCALA_VERSION='2.11.12'
-  # sudo make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=2.11.12 SPARK_VERSION=2.4.6
 elif [ "${EMR_VERSION}" = "emr-6.1.0" ]
 then
   HAIL_VERSION='0.2.60'
   PYTHON_VERSION='3.7'
   SPARK_VERSION='3.0.0'
   SCALA_VERSION='2.12.10'
-  # sudo make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=2.12.10 SPARK_VERSION=3.0.0
 elif [ "${EMR_VERSION}" = "emr-6.11.1" ]
 then
   HAIL_VERSION='0.2.124'
   PYTHON_VERSION='3.9'
   PYTHON_PATCH='18'
-  SPARK_VERSION='3.3.0'
+  SPARK_VERSION='3.3.2'
   SCALA_VERSION='2.12.15'
-  # sudo make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=2.12.15 SPARK_VERSION=3.3.0
 else
   echo "EMR version ${EMR_VERSION} not supported !"
   exit 0
@@ -68,34 +65,33 @@ echo "SCALA_VERSION: $SCALA_VERSION"
 echo '# Update system #'
 sudo yum update -y --skip-broken
 
-# # python default to 3.7
-# if [ "${PYTHON_VERSION}" = "3.9" ]
-# then
-#   echo "# Update python to $PYTHON_VERSION.$PYTHON_PATCH #"
-#   # FROM https://repost.aws/questions/QUfxjbaGrXRTSKGy4-rnQ8Uw/how-to-upgrade-python-version-in-emr-since-python-3-7-support-discontinued
-#   sudo yum install libffi-devel -y
-#   sudo wget https://www.python.org/ftp/python/${PYTHON_VERSION}.${PYTHON_PATCH}/Python-${PYTHON_VERSION}.${PYTHON_PATCH}.tgz   
-#   sudo tar -zxvf Python-${PYTHON_VERSION}.${PYTHON_PATCH}.tgz
-#   cd Python-${PYTHON_VERSION}.${PYTHON_PATCH}
-#   sudo ./configure --enable-optimizations
-#   sudo make altinstall
-#   sudo ln -sf /usr/local/bin/python3.9 /usr/bin/python3
-#   python3 -m pip install --upgrade awscli --user
-
-# fi
+# python default to 3.7
+if [ "${PYTHON_VERSION}" = "3.9" ]
+then
+  echo "# Update python to $PYTHON_VERSION.$PYTHON_PATCH #"
+  # FROM https://repost.aws/questions/QUfxjbaGrXRTSKGy4-rnQ8Uw/how-to-upgrade-python-version-in-emr-since-python-3-7-support-discontinued
+  sudo yum install libffi-devel -y
+  sudo wget https://www.python.org/ftp/python/${PYTHON_VERSION}.${PYTHON_PATCH}/Python-${PYTHON_VERSION}.${PYTHON_PATCH}.tgz   
+  sudo tar -zxvf Python-${PYTHON_VERSION}.${PYTHON_PATCH}.tgz
+  cd Python-${PYTHON_VERSION}.${PYTHON_PATCH}
+  sudo ./configure --enable-optimizations
+  sudo make altinstall
+  sudo ln -sf /usr/local/bin/python3.9 /usr/bin/python3
+  # python3 -m pip install --upgrade awscli --user
+fi
 
 # WARNING: The script wheel is installed in '/home/hadoop/.local/bin' which is not on PATH.
-# echo '# Update PATH #'
-# PATH=$PATH:/home/hadoop/.local/bin
+echo '# Update PATH #'
+PATH=$PATH:/home/hadoop/.local/bin
+
+echo '# Update Java to v11 #'
+echo 3 | sudo alternatives --config java
+echo
 
 # echo '# Install libs #'
 # pip3.9 install --upgrade pip
 # sudo yum install -y lz4 lz4-devel
 # sudo yum install -y git
-
-# echo '# Update Java to v11 #'
-# echo 3 | sudo alternatives --config java
-# echo
 
 # echo '# Clone Hail #'
 # cd /tmp
