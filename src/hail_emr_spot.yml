@@ -52,6 +52,7 @@ Parameters:
     AllowedValues:
       - emr-5.31.0
       - emr-6.1.0
+      - emr-6.9.1
       - emr-6.11.1
   EMRLogBucket:
     Description: S3 bucket address for EMR log storage
