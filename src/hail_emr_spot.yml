@@ -25,6 +25,7 @@ Metadata:
     - Label:
         default: Stack Options
       Parameters:
+        - HailInstall
         - GitIntegration
         - GitHubAccount
         - GitHubRepository
@@ -93,6 +94,13 @@ Parameters:
     MinValue: '1'
     MaxValue: '100'
     Default: '45'
+  HailInstall:
+    Description: Include Hail in the stack
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
   GitIntegration:
     Description: Link a GitHub repository to the stack
     Type: String
@@ -175,6 +183,8 @@ Resources:
           Args:
           - --emr-version
           - Ref: EMRReleaseLabel
+          - --install
+          - Ref: HailInstall
       - Name: install_vep
         ScriptBootstrapAction:
           Path: !Sub "${CFNBucket}install_vep.sh"

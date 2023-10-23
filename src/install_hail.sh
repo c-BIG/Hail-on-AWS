@@ -14,6 +14,10 @@ while [ $# -gt 0 ]; do
       shift
       EMR_VERSION=$1
       ;;
+    --install)
+      shift
+      INSTALL=$1
+      ;;
     -*)
       error_msg "unrecognized option: $1"
       ;;
@@ -64,10 +68,12 @@ fi
 
 echo '# Parameters #'
 echo "EMR_VERSION: $EMR_VERSION"
-echo "HAIL_VERSION: $HAIL_VERSION"
 echo "PYTHON_VERSION: $PYTHON_VERSION.$PYTHON_PATCH"
 echo "SPARK_VERSION: $SPARK_VERSION"
 echo "SCALA_VERSION: $SCALA_VERSION"
+echo "HAIL_INSTALL: $INSTALL"
+echo "HAIL_VERSION: $HAIL_VERSION"
+
 
 echo '# Update system #'
 sudo yum update -y --skip-broken
@@ -103,19 +109,25 @@ echo '# Install libs #'
 sudo yum install -y lz4 lz4-devel
 sudo yum install -y git
 
-# echo '# Clone Hail #'
-# cd /tmp
-# git clone --branch $HAIL_VERSION --depth 1 https://github.com/broadinstitute/hail.git
+# Test if install needed
+if [[ "$INSTALL" == "false" ]]
+then
+    echo "# HAIL NOT INSTALLED #"
+else
+  echo '# Clone Hail #'
+  cd /tmp
+  git clone --branch $HAIL_VERSION --depth 1 https://github.com/broadinstitute/hail.git
 
-# echo '# Build Hail #'
-# cd hail/hail/
-# make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=${SCALA_VERSION} SPARK_VERSION=${SPARK_VERSION}
+  echo '# Build Hail #'
+  cd hail/hail/
+  make install-on-cluster HAIL_COMPILE_NATIVES=1 SCALA_VERSION=${SCALA_VERSION} SPARK_VERSION=${SPARK_VERSION}
 
-# # [notice] A new release of pip is available: 23.0.1 -> 23.3
-# # [notice] To update, run: pip3.9 install --upgrade pip
+# [notice] A new release of pip is available: 23.0.1 -> 23.3
+# [notice] To update, run: pip3.9 install --upgrade pip
 
-# echo '# Link Hail #'
-# sudo mkdir /opt/hail/
-# sudo ln -sf /home/hadoop/.local/lib/python${PYTHON_VERSION}/site-packages/hail/backend /opt/hail/backend
+  echo '# Link Hail #'
+  sudo mkdir /opt/hail/
+  sudo ln -sf /home/hadoop/.local/lib/python${PYTHON_VERSION}/site-packages/hail/backend /opt/hail/backend
+fi
 
 echo '### END INSTALL_HAIL.SH ###'
