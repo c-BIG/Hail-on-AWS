@@ -1,0 +1,365 @@
+# Copyright 2019-2025 Maxime HEBRARD @ https://github.com/c-BIG
+# v3.11.2 # AMI # Graviton # JAVA_HOME # Spark-default # Params # GitHub
+# EMR v7.5.0 - Python v3.9.16 - Java v11.0.25 - Hadoop v3.4.0 - Spark v3.5.2 - Scala v2.12.18 - JupyterLab v3.0.16
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Provision an EMR cluster on spot on on demand instances with Python3, Spark, Jupyter and Hail from an AMI.
+Metadata:
+  AWS::CloudFormation::Interface:
+    # Parameter list
+    ParameterGroups:
+      - Label:
+          default: -- Required --
+        Parameters:
+          - OwnerTag
+          - KeyName
+          - ProjectTag
+          - EnvironmentTag
+          - SpotCPUCount
+          - DemandCPUCount
+          - NotebooksAccount
+          - NotebooksRepo
+      - Label:
+          default: -- Defaults --
+        Parameters:
+          - EMRReleaseLabel
+          - DiskSizeGB
+          - HailAMI
+          - BidPercentage
+          - EMRLogBucket
+          - EMRLogEncryptionKey
+          - CFNBucket
+          - Subnet
+          - SecurityGroup
+          - NotebooksCreds
+          - NameTag
+Parameters:
+  # Parameter definition
+  BidPercentage:
+    Description: Percentage of onDemand price requested for spot instances
+    Type: Number
+    MinValue: 1
+    MaxValue: 100
+    Default: 99
+  CFNBucket:
+    Description: S3 bucket address for CloudFormation bootstrap actions & hail packages sources
+    Type: String
+    Default: s3://bucket/path/
+  DemandCPUCount:
+    Description: Number of CPU to provision on demand instances
+    Type: Number
+    MinValue: 0
+    MaxValue: 8000
+    Default: 0
+  DiskSizeGB:
+    Description: EBS Volume size (GB) for each node
+    Type: Number
+    MinValue: 50
+    MaxValue: 1000
+    Default: 65
+  EMRClusterName:
+    Description: Name of the EMR cluster
+    Type: String
+    Default: emr-cluster
+  EMRReleaseLabel:
+    Description: EMR release label which determines the versions of application software that are installed on the cluster.
+    Type: String
+    Default: emr-7.5.0
+    AllowedValues:
+      - emr-7.5.0
+  EMRLogBucket:
+    Description: S3 bucket address for EMR log storage
+    Type: String
+    Default: s3n://bucket/path/
+  EMRLogEncryptionKey: 
+    Description: KMS Key ID for encryption of the log bucket
+    Type: String
+    Default: arn:aws:kms:region:account:key/uuid
+  HailAMI:
+    Description: Amazone image containing Hail pre-installed
+    Type: String
+    Default: ami-00000000000000000
+  KeyName:
+    Description: name of the AWS key pair that will be used for SSH connections to the cluster.
+    Type: AWS::EC2::KeyPair::KeyName
+  NotebooksAccount:
+    Description: Github account hosting the repository that contains Jupyter notebooks to clone on the EMR
+    Type: String
+    Default: ""
+  NotebooksRepo:
+    Description: Github repository that contains Jupyter notebooks to clone on the EMR
+    Type: String
+    Default: ""
+  NotebooksCreds:
+    Description: Github authentication key used to clone repository (account:key)
+    Type: String
+    Default: ""
+  SpotCPUCount:
+    Description: Number of CPU to provision on spot instances
+    Type: Number
+    MinValue: 0
+    MaxValue: 8000
+    Default: 0
+  Subnet:
+    Description: VPC subnet in which to create the cluster.
+    Type: AWS::EC2::Subnet::Id
+    Default: subnet-00000000000000000
+  SecurityGroup:
+    Description: Seurity group to ensure access to the master node.
+    Type: AWS::EC2::SecurityGroup::Id
+    Default: sg-00000000000000000
+  OwnerTag:
+    Description: Owner name - used to tag the cluster
+    Type: String
+    Default: Owner
+    MinLength: 1
+  ProjectTag:
+    Description: Project - used to tag the cluster
+    Type: String
+    MinLength: 1
+    Default: project-tag
+  EnvironmentTag:
+    Description: Environment (dev or prod) - used to tag the cluster
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+  NameTag:
+    Description: Name of the EC2 instances
+    Type: String
+    MinLength: 1
+    Default: emr-node
+Resources:
+  SparkCluster:
+    # Description: Main EMR cluster declaration.
+    Type: AWS::EMR::Cluster
+    Properties:
+      Name: !Ref EMRClusterName
+      Applications:
+        - Name: Hadoop
+        - Name: JupyterHub
+        - Name: Livy
+        - Name: Spark
+      Configurations:
+        - Classification: emrfs-site
+          ConfigurationProperties:
+            fs.s3.maxConnections: "10000"
+            fs.s3.maxErrorRetry: "20"
+        - Classification: hadoop-env
+          Configurations:
+            - Classification: export
+              ConfigurationProperties: 
+                JAVA_HOME: /usr/lib/jvm/java-11-amazon-corretto.aarch64
+        - Classification: livy-conf
+          ConfigurationProperties:
+            livy.server.session.timeout-check: false
+            livy.server.session.timeout: 100h
+            livy.env.JAVA_HOME: /usr/lib/jvm/java-11-amazon-corretto.aarch64
+        - Classification: spark
+          ConfigurationProperties:
+            maximizeResourceAllocation: true
+        - Classification: spark-defaults
+          ConfigurationProperties:
+            spark.driver.extraClassPath: /usr/local/lib/python3.9/site-packages/hail/backend/hail-all-spark.jar:/usr/lib/hadoop-lzo/lib/*:/usr/lib/hadoop/hadoop-aws.jar:/usr/share/aws/aws-java-sdk/*:/usr/share/aws/emr/emrfs/conf:/usr/share/aws/emr/emrfs/lib/*:/usr/share/aws/emr/emrfs/auxlib/*:/usr/share/aws/emr/goodies/lib/emr-spark-goodies.jar:/usr/share/aws/emr/security/conf:/usr/share/aws/emr/security/lib/*:/usr/share/aws/hmclient/lib/aws-glue-datacatalog-spark-client.jar:/usr/share/java/Hive-JSON-Serde/hive-openx-serde.jar:/usr/share/aws/sagemaker-spark-sdk/lib/sagemaker-spark-sdk.jar:/usr/share/aws/emr/s3select/lib/emr-s3-select-spark-connector.jar:/usr/share/aws/aws-java-sdk-v2/aws-sdk-java-bundle-2.28.8.jar
+            spark.driver.extraJavaOptions: -Xss4M
+            spark.driver.maxResultSize: 5G
+            spark.driver.memory: 45G
+            spark.executor.extraClassPath: /usr/local/lib/python3.9/site-packages/hail/backend/hail-all-spark.jar:/usr/lib/hadoop-lzo/lib/*:/usr/lib/hadoop/hadoop-aws.jar:/usr/share/aws/aws-java-sdk/*:/usr/share/aws/emr/emrfs/conf:/usr/share/aws/emr/emrfs/lib/*:/usr/share/aws/emr/emrfs/auxlib/*:/usr/share/aws/emr/goodies/lib/emr-spark-goodies.jar:/usr/share/aws/emr/security/conf:/usr/share/aws/emr/security/lib/*:/usr/share/aws/hmclient/lib/aws-glue-datacatalog-spark-client.jar:/usr/share/java/Hive-JSON-Serde/hive-openx-serde.jar:/usr/share/aws/sagemaker-spark-sdk/lib/sagemaker-spark-sdk.jar:/usr/share/aws/emr/s3select/lib/emr-s3-select-spark-connector.jar:/usr/share/aws/aws-java-sdk-v2/aws-sdk-java-bundle-2.28.8.jar
+            spark.executor.extraJavaOptions: -Xss4M
+            spark.executor.heartbeatInterval: 100s
+            spark.executor.memory: 45G
+            spark.hadoop.fs.s3a.fast.upload: true
+            spark.jars: /usr/local/lib/python3.9/site-packages/hail/backend/hail-all-spark.jar
+            spark.kryo.registrator: is.hail.kryo.HailKryoRegistrator
+            spark.network.timeout: 1200s
+            spark.serializer: org.apache.spark.serializer.KryoSerializer
+            spark.speculation: true
+            spark.task.maxFailures: "20"
+            spark.yarn.executor.memoryOverhead: 4G
+        - Classification: spark-env
+          Configurations:
+            - Classification: export
+              ConfigurationProperties: 
+                JAVA_HOME: /usr/lib/jvm/java-11-amazon-corretto.aarch64
+                PYSPARK_PYTHON: /usr/bin/python3
+                PYSPARK_DRIVER_PYTHON: /usr/bin/python3
+        - Classification: yarn-env
+          Configurations:
+            - Classification: export
+              ConfigurationProperties: 
+                JAVA_HOME: /usr/lib/jvm/java-11-amazon-corretto.aarch64
+      CustomAmiId: !Ref HailAMI
+      EbsRootVolumeSize: 50
+      Instances:
+        AdditionalMasterSecurityGroups: 
+          - !Ref SecurityGroup
+        AdditionalSlaveSecurityGroups: 
+          - !Ref SecurityGroup
+        Ec2KeyName: !Ref KeyName
+        Ec2SubnetId: !Ref Subnet
+        MasterInstanceFleet:
+          Name: Master
+          TargetOnDemandCapacity: 1
+          TargetSpotCapacity: 0
+          InstanceTypeConfigs:
+            - InstanceType: r6g.2xlarge
+              WeightedCapacity: 1
+              BidPriceAsPercentageOfOnDemandPrice: !Ref BidPercentage
+              EbsConfiguration:
+                EbsOptimized: true
+                EbsBlockDeviceConfigs:
+                  - VolumeSpecification:
+                      SizeInGB: !Ref DiskSizeGB
+                      VolumeType: gp3
+        CoreInstanceFleet:
+          Name: Cores
+          TargetOnDemandCapacity: !Ref DemandCPUCount
+          TargetSpotCapacity: !Ref SpotCPUCount
+          LaunchSpecifications:
+            SpotSpecification:
+              TimeoutDurationMinutes: 20
+              TimeoutAction: SWITCH_TO_ON_DEMAND
+              AllocationStrategy: "PRICE_CAPACITY_OPTIMIZED"
+          InstanceTypeConfigs:
+            - InstanceType: r6g.2xlarge
+              WeightedCapacity: 8
+              BidPriceAsPercentageOfOnDemandPrice: !Ref BidPercentage
+              EbsConfiguration:
+                EbsOptimized: true
+                EbsBlockDeviceConfigs:
+                  - VolumeSpecification:
+                      SizeInGB: !Ref DiskSizeGB
+                      VolumeType: gp3
+            - InstanceType: r6g.4xlarge
+              WeightedCapacity: 16
+              BidPriceAsPercentageOfOnDemandPrice: !Ref BidPercentage
+              EbsConfiguration:
+                EbsOptimized: true
+                EbsBlockDeviceConfigs:
+                  - VolumeSpecification:
+                      SizeInGB: !Ref DiskSizeGB
+                      VolumeType: gp3
+            - InstanceType: r6g.8xlarge
+              WeightedCapacity: 32
+              BidPriceAsPercentageOfOnDemandPrice: !Ref BidPercentage
+              EbsConfiguration:
+                EbsOptimized: true
+                EbsBlockDeviceConfigs:
+                  - VolumeSpecification:
+                      SizeInGB: !Ref DiskSizeGB
+                      VolumeType: gp3
+            - InstanceType: r6g.12xlarge
+              WeightedCapacity: 48
+              BidPriceAsPercentageOfOnDemandPrice: !Ref BidPercentage
+              EbsConfiguration:
+                EbsOptimized: true
+                EbsBlockDeviceConfigs:
+                  - VolumeSpecification:
+                      SizeInGB: !Ref DiskSizeGB
+                      VolumeType: gp3
+            - InstanceType: r6g.16xlarge
+              WeightedCapacity: 48
+              BidPriceAsPercentageOfOnDemandPrice: !Ref BidPercentage
+              EbsConfiguration:
+                EbsOptimized: true
+                EbsBlockDeviceConfigs:
+                  - VolumeSpecification:
+                      SizeInGB: !Ref DiskSizeGB
+                      VolumeType: gp3
+            - InstanceType: r7g.2xlarge
+              WeightedCapacity: 8
+              BidPriceAsPercentageOfOnDemandPrice: !Ref BidPercentage
+              EbsConfiguration:
+                EbsOptimized: true
+                EbsBlockDeviceConfigs:
+                  - VolumeSpecification:
+                      SizeInGB: !Ref DiskSizeGB
+                      VolumeType: gp3
+            - InstanceType: r7g.4xlarge
+              WeightedCapacity: 16
+              BidPriceAsPercentageOfOnDemandPrice: !Ref BidPercentage
+              EbsConfiguration:
+                EbsOptimized: true
+                EbsBlockDeviceConfigs:
+                  - VolumeSpecification:
+                      SizeInGB: !Ref DiskSizeGB
+                      VolumeType: gp3
+            - InstanceType: r7g.8xlarge
+              WeightedCapacity: 32
+              BidPriceAsPercentageOfOnDemandPrice: !Ref BidPercentage
+              EbsConfiguration:
+                EbsOptimized: true
+                EbsBlockDeviceConfigs:
+                  - VolumeSpecification:
+                      SizeInGB: !Ref DiskSizeGB
+                      VolumeType: gp3
+            - InstanceType: r7g.12xlarge
+              WeightedCapacity: 48
+              BidPriceAsPercentageOfOnDemandPrice: !Ref BidPercentage
+              EbsConfiguration:
+                EbsOptimized: true
+                EbsBlockDeviceConfigs:
+                  - VolumeSpecification:
+                      SizeInGB: !Ref DiskSizeGB
+                      VolumeType: gp3
+            - InstanceType: r7g.16xlarge
+              WeightedCapacity: 48
+              BidPriceAsPercentageOfOnDemandPrice: !Ref BidPercentage
+              EbsConfiguration:
+                EbsOptimized: true
+                EbsBlockDeviceConfigs:
+                  - VolumeSpecification:
+                      SizeInGB: !Ref DiskSizeGB
+                      VolumeType: gp3
+      JobFlowRole: EMR_EC2_DefaultRole
+      LogEncryptionKmsKeyId: !Ref EMRLogEncryptionKey
+      LogUri: !Ref EMRLogBucket
+      ReleaseLabel: !Ref EMRReleaseLabel
+      ScaleDownBehavior: TERMINATE_AT_TASK_COMPLETION
+      ServiceRole: EMR_DefaultRole
+      Steps:
+        - Name: config_cluster
+          ActionOnFailure: CONTINUE
+          HadoopJarStep:
+            Jar: s3://ap-southeast-1.elasticmapreduce/libs/script-runner/script-runner.jar
+            Args:
+              - !Sub "${CFNBucket}config_cluster.sh"
+        - Name: config_jupyter
+          ActionOnFailure: CONTINUE
+          HadoopJarStep:
+            Jar: s3://ap-southeast-1.elasticmapreduce/libs/script-runner/script-runner.jar
+            Args:
+              - !Sub "${CFNBucket}config_jupyter.sh"
+              - --branch
+              - !Ref OwnerTag
+              - --account
+              - !Ref NotebooksAccount
+              - --repo
+              - !Ref NotebooksRepo
+              - --creds
+              - !Ref NotebooksCreds
+      Tags:
+        - Key: Name
+          Value:
+            Ref: NameTag
+        - Key: Owner
+          Value:
+            Ref: OwnerTag
+        - Key: Project
+          Value:
+            Ref: ProjectTag
+        - Key: Environment
+          Value:
+            Ref: EnvironmentTag
+      VisibleToAllUsers: True
+
+Outputs:
+  ClusterId:
+    Description: Cluster ID
+    Value:
+      Ref: SparkCluster
+  EMRMasterDNS:
+    Description: EMR Master node public dns
+    Value: !GetAtt
+      - SparkCluster
+      - MasterPublicDNS
